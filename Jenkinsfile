@@ -105,49 +105,23 @@ pipeline {
 
         stage('Set up Python & Run Tests') {
             steps {
-                sh '''
-                    set +e
-                    python3 -m venv venv
-                    . venv/bin/activate
-                    python --version
-                    pip install --upgrade pip
-                    pip install pytest
-                    pip list
-                    pytest tests/test_calculator_logic.py --tb=short > pytest_output.log
-                    echo $? > pytest_exit_code.txt
-                '''
-            }
-        }
-
-        stage('Parse Failures and Create GitHub Checks') {
-            steps {
                 script {
-                    def exitCode = readFile('pytest_exit_code.txt').trim()
-                    def log = readFile('pytest_output.log')
-                    def failedTests = []
-
-                    log.eachLine { line ->
-                        def match = (line =~ /^FAILED\s+.*::(test_\w+)/)
-                        if (match) {
-                            failedTests << match[0][1]
-                        }
-                    }
-
-                    if (exitCode != '0') {
-                        if (failedTests.isEmpty()) {
-                            withChecks(name: 'Calculator Test Failures') {
-                                error("❌ Some tests failed but specific test names couldn't be extracted.")
-                            }
-                        } else {
-                            failedTests.each { test ->
-                                withChecks(name: "${test}") {
-                                    error("❌ ${test} failed. Please review and fix the logic.")
-                                }
-                            }
-                        }
-                    } else {
-                        withChecks(name: 'Calculator Tests') {
-                            echo "✅ All tests passed successfully."
+                    withChecks(name: 'Python Tests') {
+                        try {
+                            sh '''
+                                set -e
+                                python3 -m venv venv
+                                . venv/bin/activate
+                                python --version
+                                pip install --upgrade pip
+                                pip install pytest
+                                pip list
+                                pytest tests/test_calculator_logic.py
+                            '''
+                        } catch (err) {
+                            // Print which test failed (you can enhance this using pytest output parsing)
+                            echo "❌ Python tests failed"
+                            error("Test run failed: ${err}")
                         }
                     }
                 }
