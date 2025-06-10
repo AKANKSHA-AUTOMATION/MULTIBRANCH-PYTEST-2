@@ -103,59 +103,56 @@ pipeline {
             }
         }
 
-        stage('Set up Python') {
+        stage('Set up Python & Run Tests') {
             steps {
-                script {
-                    sh '''
-                        set -e
-                        python3 -m venv venv
-                        . venv/bin/activate
-                        python --version
-                        pip install --upgrade pip
-                        pip install pytest
-                        pip list
-                    '''
-                }
+                sh '''
+                    set +e
+                    python3 -m venv venv
+                    . venv/bin/activate
+                    python --version
+                    pip install --upgrade pip
+                    pip install pytest
+                    pip list
+                    pytest tests/test_calculator_logic.py --tb=short > pytest_output.log
+                    echo $? > pytest_exit_code.txt
+                '''
             }
         }
 
-        stage('Run Addition Tests') {
+        stage('Parse Failures and Create GitHub Checks') {
             steps {
                 script {
-                    withChecks(name: 'Addition Logic Check') {
-                        try {
-                            sh '''
-                                . venv/bin/activate
-                                pytest tests/test_calculator_logic.py -k test_addition_positive
-                            '''
-                        } catch (err) {
-                            echo "❌ Addition logic check failed."
-                            error("Addition test failed.")
+                    def exitCode = readFile('pytest_exit_code.txt').trim()
+                    def log = readFile('pytest_output.log')
+                    def failedTests = []
+
+                    log.eachLine { line ->
+                        def match = (line =~ /^FAILED\s+.*::(test_\w+)/)
+                        if (match) {
+                            failedTests << match[0][1]
+                        }
+                    }
+
+                    if (exitCode != '0') {
+                        if (failedTests.isEmpty()) {
+                            withChecks(name: 'Calculator Test Failures') {
+                                error("❌ Some tests failed but specific test names couldn't be extracted.")
+                            }
+                        } else {
+                            failedTests.each { test ->
+                                withChecks(name: "${test}") {
+                                    error("❌ ${test} failed. Please review and fix the logic.")
+                                }
+                            }
+                        }
+                    } else {
+                        withChecks(name: 'Calculator Tests') {
+                            echo "✅ All tests passed successfully."
                         }
                     }
                 }
             }
         }
-
-        stage('Run Subtraction Tests') {
-            steps {
-                script {
-                    withChecks(name: 'Subtraction Logic Check') {
-                        try {
-                            sh '''
-                                . venv/bin/activate
-                                pytest tests/test_calculator_logic.py -k test_subtraction_positive
-                            '''
-                        } catch (err) {
-                            echo "❌ Subtraction logic check failed."
-                            error("Subtraction test failed.")
-                        }
-                    }
-                }
-            }
-        }
-
-        // Add more `withChecks` blocks for other types of tests
     }
 
     post {
