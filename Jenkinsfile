@@ -103,46 +103,64 @@ pipeline {
             }
         }
 
-        stage('Set up Python & Run Tests') {
+        stage('Set up Python') {
             steps {
                 script {
-                    try {
-                        sh '''
-                            set -e
-                            python3 -m venv venv
-                            . venv/bin/activate
-                            python --version
-                            pip install --upgrade pip
-                            pip install pytest
-                            pip list
-                            pytest tests/test_calculator_logic.py
-                        '''
-                    } catch (err) {
-                        // 💥 If failure, add custom status for GitHub Checks
-                        echo "❌ Check failed at addition"
+                    sh '''
+                        set -e
+                        python3 -m venv venv
+                        . venv/bin/activate
+                        python --version
+                        pip install --upgrade pip
+                        pip install pytest
+                        pip list
+                    '''
+                }
+            }
+        }
 
-                        // Report using GitHub Checks plugin (if available)
-                        githubChecks name: 'Addition Check', conclusion: 'failure', output: [
-                            title: 'Addition Logic Failed',
-                            summary: 'Check failed at addition logic. Please validate input or fix the function.'
-                        ]
-
-                        // Fail the build
-                        error("Stopping build due to test failure")
+        stage('Run Addition Tests') {
+            steps {
+                script {
+                    withChecks(name: 'Addition Logic Check') {
+                        try {
+                            sh '''
+                                . venv/bin/activate
+                                pytest tests/test_calculator_logic.py -k test_addition_positive
+                            '''
+                        } catch (err) {
+                            echo "❌ Addition logic check failed."
+                            error("Addition test failed.")
+                        }
                     }
                 }
             }
         }
+
+        stage('Run Subtraction Tests') {
+            steps {
+                script {
+                    withChecks(name: 'Subtraction Logic Check') {
+                        try {
+                            sh '''
+                                . venv/bin/activate
+                                pytest tests/test_calculator_logic.py -k test_subtraction_positive
+                            '''
+                        } catch (err) {
+                            echo "❌ Subtraction logic check failed."
+                            error("Subtraction test failed.")
+                        }
+                    }
+                }
+            }
+        }
+
+        // Add more `withChecks` blocks for other types of tests
     }
 
     post {
         success {
             echo "✅ Pipeline completed successfully for branch: ${BRANCH_NAME}"
-            // Optional: Report success to GitHub
-            githubChecks name: 'Addition Check', conclusion: 'success', output: [
-                title: 'Tests Passed',
-                summary: 'All calculator logic tests passed successfully.'
-            ]
         }
         failure {
             echo "❌ Pipeline failed for branch: ${BRANCH_NAME}"
