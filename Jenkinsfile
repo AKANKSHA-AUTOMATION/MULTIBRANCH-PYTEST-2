@@ -105,30 +105,50 @@ pipeline {
 
         stage('Set up Python & Run Tests') {
             steps {
+                sh '''
+                    set +e
+                    python3 -m venv venv
+                    . venv/bin/activate
+                    python --version
+                    pip install --upgrade pip
+                    pip install pytest
+                    pip list
+                    pytest tests/test_calculator_logic.py --tb=short > pytest_output.log
+                    echo $? > pytest_exit_code.txt
+                '''
+            }
+        }
+
+        stage('Parse Failures and Create GitHub Checks') {
+            steps {
                 script {
-                    try {
-                        sh '''
-                            set -e
-                            python3 -m venv venv
-                            . venv/bin/activate
-                            python --version
-                            pip install --upgrade pip
-                            pip install pytest
-                            pip list
-                            pytest tests/test_calculator_logic.py
-                        '''
-                    } catch (err) {
-                        // 💥 If failure, add custom status for GitHub Checks
-                        echo "❌ Check failed at addition"
+                    def exitCode = readFile('pytest_exit_code.txt').trim()
+                    def log = readFile('pytest_output.log')
+                    def failedTests = []
 
-                        // Report using GitHub Checks plugin (if available)
-                        githubChecks name: 'Addition Check', conclusion: 'failure', output: [
-                            title: 'Addition Logic Failed',
-                            summary: 'Check failed at addition logic. Please validate input or fix the function.'
-                        ]
+                    log.eachLine { line ->
+                        def match = (line =~ /^FAILED\s+.*::(test_\w+)/)
+                        if (match) {
+                            failedTests << match[0][1]
+                        }
+                    }
 
-                        // Fail the build
-                        error("Stopping build due to test failure")
+                    if (exitCode != '0') {
+                        if (failedTests.isEmpty()) {
+                            withChecks(name: 'Calculator Test Failures') {
+                                error("❌ Some tests failed but specific test names couldn't be extracted.")
+                            }
+                        } else {
+                            failedTests.each { test ->
+                                withChecks(name: "${test}") {
+                                    error("❌ ${test} failed. Please review and fix the logic.")
+                                }
+                            }
+                        }
+                    } else {
+                        withChecks(name: 'Calculator Tests') {
+                            echo "✅ All tests passed successfully."
+                        }
                     }
                 }
             }
@@ -138,11 +158,6 @@ pipeline {
     post {
         success {
             echo "✅ Pipeline completed successfully for branch: ${BRANCH_NAME}"
-            // Optional: Report success to GitHub
-            githubChecks name: 'Addition Check', conclusion: 'success', output: [
-                title: 'Tests Passed',
-                summary: 'All calculator logic tests passed successfully.'
-            ]
         }
         failure {
             echo "❌ Pipeline failed for branch: ${BRANCH_NAME}"
