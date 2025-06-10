@@ -265,22 +265,22 @@ pipeline {
             }
         }
         success {
-            echo "✅ Pipeline completed successfully for branch: ${env.BRANCH_NAME_DETERMINED}"
+            echo "Pipeline completed successfully for branch: ${env.BRANCH_NAME_DETERMINED}"
         }
         failure {
-            echo "❌ Pipeline failed for branch: ${env.BRANCH_NAME_DETERMINED}"
+            echo "Pipeline failed for branch: ${env.BRANCH_NAME_DETERMINED}"
             // The individual `withChecks` will have already reported specific failures.
             // This global failure message is for Jenkins console output.
         }
         aborted {
-            echo "🚫 Pipeline aborted for branch: ${env.BRANCH_NAME_DETERMINED}"
+            echo "Pipeline aborted for branch: ${env.BRANCH_NAME_DETERMINED}"
             // This will catch builds aborted due to the 'AbortException' for unallowed branches.
         }
         unstable {
-            echo "⚠️ Pipeline unstable for branch: ${env.BRANCH_NAME_DETERMINED}"
+            echo "Pipeline unstable for branch: ${env.BRANCH_NAME_DETERMINED}"
         }
         notBuilt {
-            echo "⏭️ Pipeline not built for branch: ${env.BRANCH_NAME_DETERMINED} (e.g., due to an unallowed branch)."
+            echo "Pipeline not built for branch: ${env.BRANCH_NAME_DETERMINED} (e.g., due to an unallowed branch)."
         }
     }
 }
