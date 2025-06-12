@@ -108,6 +108,7 @@ pipeline {
         stage('Set up Python & Run Tests') {
             steps {
                 script {
+                    echo "📋 Running tests with GitHub Checks enabled..."
                     withChecks(name: 'Python Tests') {
                         try {
                             sh '''
