@@ -135,7 +135,7 @@ pipeline {
                                 . venv/bin/activate
                                 pip install --upgrade pip
                                 pip install pytest
-                                pytest tests/test_calculator_logic.py --tb=short > result.log || true
+                                pytest tests/test_calculator_logic.py --tb=short > result.log | tee result.log
                             '''
 
                             def failedTest = sh(script: "grep -E 'FAILED test_' result.log | cut -d ':' -f1", returnStdout: true).trim()
