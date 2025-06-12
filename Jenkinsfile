@@ -109,24 +109,45 @@ pipeline {
             steps {
                 script {
                     echo "📋 Running tests with GitHub Checks enabled..."
+                    // withChecks(name: 'Python Tests') {
+                    //     try {
+                    //         sh '''
+                    //             set -e
+                    //             python3 -m venv venv
+                    //             . venv/bin/activate
+                    //             python --version
+                    //             pip install --upgrade pip
+                    //             pip install pytest
+                    //             pip list
+                    //             pytest tests/test_calculator_logic.py
+                    //         '''
+                    //     } catch (err) {
+                    //         // Print which test failed (you can enhance this using pytest output parsing)
+                    //         echo "❌ Python tests failed"
+                    //         error("Test run failed: ${err}")
+                    //     }
+                    // }
                     withChecks(name: 'Python Tests') {
                         try {
                             sh '''
                                 set -e
                                 python3 -m venv venv
                                 . venv/bin/activate
-                                python --version
                                 pip install --upgrade pip
                                 pip install pytest
-                                pip list
-                                pytest tests/test_calculator_logic.py
+                                pytest tests/test_calculator_logic.py --tb=short > result.log || true
                             '''
+
+                            def failedTest = sh(script: "grep -E 'FAILED test_' result.log | cut -d ':' -f1", returnStdout: true).trim()
+                            if (failedTest) {
+                                error("Test failure: ${failedTest}")
+                            }
                         } catch (err) {
-                            // Print which test failed (you can enhance this using pytest output parsing)
-                            echo "❌ Python tests failed"
-                            error("Test run failed: ${err}")
+                            echo "Python tests failed"
+                            error("Python test failed: ${err}")
                         }
                     }
+
                 }
             }
         }
