@@ -109,48 +109,24 @@ pipeline {
             steps {
                 script {
                     echo "📋 Running tests with GitHub Checks enabled..."
-                    // withChecks(name: 'Python Tests') {
-                    //     try {
-                    //         sh '''
-                    //             set -e
-                    //             python3 -m venv venv
-                    //             . venv/bin/activate
-                    //             python --version
-                    //             pip install --upgrade pip
-                    //             pip install pytest
-                    //             pip list
-                    //             pytest tests/test_calculator_logic.py
-                    //         '''
-                    //     } catch (err) {
-                    //         // Print which test failed (you can enhance this using pytest output parsing)
-                    //         echo "❌ Python tests failed"
-                    //         error("Test run failed: ${err}")
-                    //     }
-                    // }
                     withChecks(name: 'Python Tests') {
                         try {
                             sh '''
                                 set -e
                                 python3 -m venv venv
                                 . venv/bin/activate
+                                python --version
                                 pip install --upgrade pip
                                 pip install pytest
-                                pytest tests/test_calculator_logic.py --tb=short > result.log | tee result.log
+                                pip list
+                                pytest tests/test_calculator_logic.py
                             '''
-
-                            // def failedTest = sh(script: "grep -E 'FAILED test_' result.log | cut -d ':' -f1", returnStdout: true).trim()
-                            // if (failedTest) {
-                            //     error("Test failure: ${failedTest}")
-                            def failedTest = sh(script: "grep -i '== FAILURES ==' result.log || true", returnStdout: true).trim()
-                            if (failedTest) {
-                                error("Some test(s) failed — check result.log")
-                            }
                         } catch (err) {
-                            echo "Python tests failed"
-                            error("Python test failed: ${err}")
+                            // Print which test failed (you can enhance this using pytest output parsing)
+                            echo "❌ Python tests failed"
+                            error("Test run failed: ${err}")
                         }
                     }
-
                 }
             }
         }
