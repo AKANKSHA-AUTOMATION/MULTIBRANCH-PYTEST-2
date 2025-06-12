@@ -138,9 +138,12 @@ pipeline {
                                 pytest tests/test_calculator_logic.py --tb=short > result.log | tee result.log
                             '''
 
-                            def failedTest = sh(script: "grep -E 'FAILED test_' result.log | cut -d ':' -f1", returnStdout: true).trim()
+                            // def failedTest = sh(script: "grep -E 'FAILED test_' result.log | cut -d ':' -f1", returnStdout: true).trim()
+                            // if (failedTest) {
+                            //     error("Test failure: ${failedTest}")
+                            def failedTest = sh(script: "grep -i '== FAILURES ==' result.log || true", returnStdout: true).trim()
                             if (failedTest) {
-                                error("Test failure: ${failedTest}")
+                                error("Some test(s) failed — check result.log")
                             }
                         } catch (err) {
                             echo "Python tests failed"
