@@ -123,7 +123,7 @@ pipeline {
                             '''
                         } catch (err) {
                             // Print which test failed (you can enhance this using pytest output parsing)
-                            echo "❌ Python tests failed"
+                            echo "Python tests failed"
                             error("Test run failed: ${err}")
                         }
                     }
@@ -134,10 +134,10 @@ pipeline {
 
     post {
         success {
-            echo "✅ Pipeline completed successfully for branch: ${BRANCH_NAME}"
+            echo "Pipeline completed successfully for branch: ${BRANCH_NAME}"
         }
         failure {
-            echo "❌ Pipeline failed for branch: ${BRANCH_NAME}"
+            echo "Pipeline failed for branch: ${BRANCH_NAME}"
         }
     }
 }
