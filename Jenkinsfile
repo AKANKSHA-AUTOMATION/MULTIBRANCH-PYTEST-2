@@ -124,7 +124,10 @@ pipeline {
                         } catch (err) {
                             // Print which test failed (you can enhance this using pytest output parsing)
                             echo "Python tests failed"
-                            error("Test run failed: ${err}")
+                            def stepName = failedTest ? failedTest : 'unknown'
+                            error("Set up Python & Run Tests: error in '${stepName}' step")
+
+                            // error("Test run failed: ${err}")
                         }
                     }
                 }
