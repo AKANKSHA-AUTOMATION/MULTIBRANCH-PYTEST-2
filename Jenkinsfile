@@ -67,6 +67,85 @@
 // (main script)
 
 // -----------------------------------------------------------------------------------
+// pipeline {
+//     agent any
+
+//     environment {
+//         BRANCH_NAME = "${env.BRANCH_NAME}"
+//         IS_PR = false
+//     }
+
+//     stages {
+//         stage('Determine Event Type') {
+//             steps {
+//                 script {
+//                     if (env.CHANGE_BRANCH) {
+//                         IS_PR = true
+//                         BRANCH_NAME = env.CHANGE_BRANCH
+//                         echo "📦 Pull Request from branch: ${BRANCH_NAME}"
+//                     } else if (env.BRANCH_NAME) {
+//                         echo "🔁 Branch build: ${env.BRANCH_NAME}"
+//                     } else {
+//                         error("Unsupported event: Could not detect branch from environment")
+//                     }
+
+//                     def allowedBranches = ['main', 'automation1', 'automation2']
+//                     if (!allowedBranches.contains(BRANCH_NAME)) {
+//                         echo "⚠️ Skipping branch ${BRANCH_NAME} as it is not in the allowed list."
+//                         currentBuild.result = 'SUCCESS'
+//                         error("Branch ${BRANCH_NAME} is not allowed, skipping the build.")
+//                     }
+//                 }
+//             }
+//         }
+
+//         stage('Checkout Code') {
+//             steps {
+//                 checkout scm
+//             }
+//         }
+
+//         stage('Set up Python & Run Tests') {
+//             steps {
+//                 script {
+//                     echo "📋 Running tests with GitHub Checks enabled..."
+//                     withChecks(name: 'Python Tests') {
+//                         try {
+//                             sh '''
+//                                 set -e
+//                                 python3 -m venv venv
+//                                 . venv/bin/activate
+//                                 python --version
+//                                 pip install --upgrade pip
+//                                 pip install pytest
+//                                 pip list
+//                                 pytest tests/test_calculator_logic.py
+//                             '''
+//                         } catch (err) {
+//                             // Print which test failed (you can enhance this using pytest output parsing)
+//                             echo "Python tests failed"
+//                             error("Test run failed: ${err}")
+//                         }
+//                     }
+//                 }
+//             }
+//         }
+//     }
+
+//     post {
+//         success {
+//             echo "Pipeline completed successfully for branch: ${BRANCH_NAME}"
+//         }
+//         failure {
+//             echo "Pipeline failed for branch: ${BRANCH_NAME}"
+//         }
+//     }
+// }
+
+
+
+// this is useful script to run pytest in a multibranch pipeline with branch filtering
+
 pipeline {
     agent any
 
@@ -119,15 +198,16 @@ pipeline {
                                 pip install --upgrade pip
                                 pip install pytest
                                 pip list
-                                pytest tests/test_calculator_logic.py
+                                pytest tests/test_calculator_logic.py --tb=short > result.log || true
                             '''
-                        } catch (err) {
-                            // Print which test failed (you can enhance this using pytest output parsing)
-                            echo "Python tests failed"
-                            def stepName = failedTest ? failedTest : 'unknown'
-                            error("Set up Python & Run Tests: error in '${stepName}' step")
 
-                            // error("Test run failed: ${err}")
+                            def failedTest = sh(script: "grep -E 'FAILED test_' result.log | cut -d ':' -f1", returnStdout: true).trim()
+                            if (failedTest) {
+                                error("Set up Python & Run Tests: error in '${failedTest}' step")
+                            }
+                        } catch (err) {
+                            echo "❌ Python tests failed"
+                            error("Python test execution failed: ${err}")
                         }
                     }
                 }
@@ -137,14 +217,11 @@ pipeline {
 
     post {
         success {
-            echo "Pipeline completed successfully for branch: ${BRANCH_NAME}"
+            echo "✅ Pipeline completed successfully for branch: ${BRANCH_NAME}"
         }
         failure {
-            echo "Pipeline failed for branch: ${BRANCH_NAME}"
+            echo "❌ Pipeline failed for branch: ${BRANCH_NAME}"
         }
     }
 }
-
-
-
 
